@@ -1,0 +1,43 @@
+name: Export og Deploy til itch.io
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  export-web:
+    name: Web Export
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - name: Sjekk ut kode
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Sett opp eksportmapper
+        run: mkdir -v -p builds/
+
+      - name: Eksporter til Web (HTML5)
+        run: |
+          godot --headless --export-release "Web" ./builds/index.html
+        continue-on-error: false
+
+      - name: Last opp build-artefakt
+        uses: actions/upload-artifact@v4
+        with:
+          name: rema-run-web
+          path: builds/
+          retention-days: 30
+
+      - name: Deploy til itch.io
+        uses: josephbmanley/butler-publish-itchio-action@master
+        env:
+          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_API_KEY }}
+          CHANNEL: html5
+          ITCH_GAME: rema-run
+          ITCH_USER: ${{ secrets.ITCH_USERNAME }}
+          PACKAGE: ./builds/
+          VERSION: ${{ github.run_number }}

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://chk001"]
+
+[ext_resource type="Script" path="res://scripts/Checkout.gd" id="1_chk"]
+
+[node name="Checkout" type="Node2D"]
+script = ExtResource("1_chk")

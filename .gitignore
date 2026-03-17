@@ -1,0 +1,16 @@
+# Godot 4
+.godot/
+*.uid
+export_credentials.cfg
+
+# Builds (keep structure, ignore output)
+builds/**/*.html
+builds/**/*.js
+builds/**/*.wasm
+builds/**/*.pck
+builds/**/*.png
+!builds/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db

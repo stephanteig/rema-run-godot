@@ -1,0 +1,436 @@
+extends Node2D
+
+const TILE := 32
+# Store layout: 40 wide x 20 tall
+const KOLS := 40
+const RADER := 20
+
+# Soner i verden (i piksler) -- overlapping Area2D-ekvivalenter sjekket manuelt
+var soner := {}        # "kategori_id" -> Rect2 (world rect)
+var powerup_sprites := []
+
+var spiller: CharacterBody2D
+var mathias_node: Node2D
+var kamera: Camera2D
+var spiller_hastighet := 160.0
+
+var i_sone: String = ""   # kategori spilleren er i
+var meksikaner_node: Node2D = null
+
+func _ready() -> void:
+	var kar = load("res://scripts/data/Karakterer.gd").new().KARAKTERER.get(GameState.karakter_id, {})
+	if kar.has("hastighet"):
+		spiller_hastighet = kar.hastighet
+
+	_bygg_butikk()
+	_plasser_spiller()
+	_plasser_mathias()
+	_bygg_kamera()
+	_plasser_powerups()
+	_bygg_hud()
+
+	GameState.timer_ferdig.connect(_tid_ute)
+
+func _bygg_butikk() -> void:
+	# Bakgrunn
+	var bg := ColorRect.new()
+	bg.color = Color(0.85, 0.82, 0.78)
+	bg.size = Vector2(KOLS * TILE, RADER * TILE)
+	add_child(bg)
+
+	# Vegger
+	for x in range(KOLS):
+		_lag_tile(x, 0, Color(0.35, 0.35, 0.45))   # topp vegg
+		_lag_tile(x, RADER - 1, Color(0.35, 0.35, 0.45))  # bunn vegg
+	for y in range(RADER):
+		_lag_tile(0, y, Color(0.35, 0.35, 0.45))   # venstre vegg
+		_lag_tile(KOLS - 1, y, Color(0.35, 0.35, 0.45))  # hoyre vegg
+
+	# Kjoleskap (venstre vegg, x=1, y=1-8)
+	for y in range(1, 4):
+		_lag_tile_bilde(1, y, "tile_fridge_brus")
+	_lag_sone_rect("Brus", 1, 1, 2, 3)
+	for y in range(4, 9):
+		_lag_tile_bilde(1, y, "tile_fridge_energi")
+	_lag_sone_rect("Energidrikker", 1, 4, 2, 5)
+
+	# Topp hyller (y=1, x=5-30)
+	for x in range(5, 12):
+		_lag_tile_bilde(x, 1, "tile_zone_notter")
+	_lag_sone_rect("Notter", 5, 1, 7, 2)
+
+	for x in range(12, 28):
+		_lag_tile_bilde(x, 1, "tile_zone_snacks")
+	_lag_sone_rect("Snacks", 12, 1, 16, 2)
+
+	for x in range(28, 35):
+		_lag_tile_bilde(x, 1, "tile_zone_brod")
+
+	# U-form hyller (midten)
+	for x in range(8, 18):
+		_lag_tile_bilde(x, 5, "tile_shelf_horiz")  # topp av U
+		_lag_tile_bilde(x, 10, "tile_shelf_horiz") # bunn av U
+	for y in range(5, 11):
+		_lag_tile_bilde(8, y, "tile_shelf_vert")   # venstre arm
+		_lag_tile_bilde(17, y, "tile_shelf_vert")  # hoyre arm
+
+	# Tyggis langs innsiden av venstre arm
+	for y in range(6, 10):
+		_lag_tile_bilde(9, y, "tile_zone_tyggis")
+	_lag_sone_rect("Tyggis", 9, 6, 10, 9)
+
+	# Frukt langs bunnen av U (innsiden)
+	for x in range(10, 16):
+		_lag_tile_bilde(x, 9, "tile_zone_frukt")
+	_lag_sone_rect("Frukt", 10, 9, 15, 10)
+
+	# DAGLIGVARER-tekst inni U
+	var dag_lbl := Label.new()
+	dag_lbl.text = "DAGLIGVARER"
+	dag_lbl.add_theme_font_size_override("font_size", 14)
+	dag_lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4))
+	dag_lbl.position = Vector2(10 * TILE, 7 * TILE)
+	add_child(dag_lbl)
+
+	# Baguette sone (frittliggende, midt-hoyre)
+	for x in range(24, 28):
+		_lag_tile_bilde(x, 7, "tile_zone_baguette")
+	_lag_sone_rect("Baguetter", 24, 7, 27, 8)
+
+	# Kasser (nede til venstre)
+	_lag_tile_bilde(3, 16, "tile_kasse_open")
+	var kassedame := Sprite2D.new()
+	kassedame.texture = load("res://assets/char_kassedame.png")
+	kassedame.scale = Vector2(0.45, 0.45)
+	kassedame.position = Vector2(3 * TILE + 16, 15 * TILE)
+	add_child(kassedame)
+
+	for x in range(5, 9):
+		_lag_tile_bilde(x, 16, "tile_kasse_closed")
+
+	# Inngang (bunn, litt til hoyre for midten)
+	for x in range(19, 22):
+		_lag_tile_bilde(x, RADER - 1, "tile_entrance")
+
+func _lag_tile(tx: int, ty: int, farge: Color) -> void:
+	var rect := ColorRect.new()
+	rect.color = farge
+	rect.position = Vector2(tx * TILE, ty * TILE)
+	rect.size = Vector2(TILE, TILE)
+	add_child(rect)
+
+func _lag_tile_bilde(tx: int, ty: int, asset_key: String) -> void:
+	var spr := Sprite2D.new()
+	var tex = load("res://assets/" + asset_key + ".png")
+	if tex:
+		spr.texture = tex
+	else:
+		# Fallback fargerekt
+		var rect := ColorRect.new()
+		rect.position = Vector2(tx * TILE, ty * TILE)
+		rect.size = Vector2(TILE, TILE)
+		rect.color = Color(0.5, 0.5, 0.8)
+		add_child(rect)
+		return
+	spr.position = Vector2(tx * TILE + TILE / 2, ty * TILE + TILE / 2)
+	spr.scale = Vector2(float(TILE) / spr.texture.get_width(), float(TILE) / spr.texture.get_height())
+	add_child(spr)
+
+func _lag_sone_rect(kategori: String, x1: int, y1: int, x2: int, y2: int) -> void:
+	soner[kategori] = Rect2(x1 * TILE, y1 * TILE, (x2 - x1 + 1) * TILE, (y2 - y1 + 1) * TILE)
+
+func _plasser_spiller() -> void:
+	spiller = CharacterBody2D.new()
+	spiller.position = Vector2(20 * TILE, (RADER - 2) * TILE)
+
+	var col := CollisionShape2D.new()
+	var shape := RectangleShape2D.new()
+	shape.size = Vector2(20, 20)
+	col.shape = shape
+	spiller.add_child(col)
+
+	var spr := Sprite2D.new()
+	spr.name = "Sprite"
+	var tex_key := "char_sondre"
+	if GameState.karakter_id == "kristine": tex_key = "char_klasse_f"
+	elif GameState.karakter_id == "hemmelig": tex_key = "char_kassedame"
+	spr.texture = load("res://assets/" + tex_key + ".png")
+	spr.scale = Vector2(0.32, 0.32)
+	spiller.add_child(spr)
+
+	add_child(spiller)
+
+func _plasser_mathias() -> void:
+	mathias_node = Node2D.new()
+	mathias_node.position = spiller.position + Vector2(-60, 0)
+	var spr := Sprite2D.new()
+	spr.texture = load("res://assets/char_mathias.png")
+	spr.scale = Vector2(0.30, 0.30)
+	mathias_node.add_child(spr)
+	var lbl := Label.new()
+	lbl.text = "Mathias"
+	lbl.add_theme_font_size_override("font_size", 11)
+	lbl.add_theme_color_override("font_color", Color.WHITE)
+	lbl.position = Vector2(-22, -40)
+	mathias_node.add_child(lbl)
+	add_child(mathias_node)
+
+func _bygg_kamera() -> void:
+	kamera = Camera2D.new()
+	kamera.limit_left = 0
+	kamera.limit_right = KOLS * TILE
+	kamera.limit_top = 0
+	kamera.limit_bottom = RADER * TILE
+	spiller.add_child(kamera)
+
+func _plasser_powerups() -> void:
+	var powerup_data := [
+		{"asset": "item_energy_can_powerup", "pos": Vector2(6 * TILE, 13 * TILE),  "type": "speed"},
+		{"asset": "item_id_kort",             "pos": Vector2(14 * TILE, 13 * TILE), "type": "id"},
+		{"asset": "item_baguette",            "pos": Vector2(22 * TILE, 12 * TILE), "type": "baguette"},
+		{"asset": "item_beast_potion",        "pos": Vector2(30 * TILE, 8 * TILE),  "type": "beast"},
+	]
+	for p in powerup_data:
+		var spr := Sprite2D.new()
+		spr.texture = load("res://assets/" + p.asset + ".png")
+		spr.scale = Vector2(0.7, 0.7)
+		spr.position = p.pos
+		spr.set_meta("powerup_type", p.type)
+		spr.set_meta("aktiv", true)
+		add_child(spr)
+		powerup_sprites.append(spr)
+
+func _bygg_hud() -> void:
+	var hud := CanvasLayer.new()
+	hud.name = "HUD"
+	add_child(hud)
+
+	# Timer
+	var timer_bg := ColorRect.new()
+	timer_bg.color = Color(0.0, 0.0, 0.0, 0.7)
+	timer_bg.position = Vector2(10, 10)
+	timer_bg.size = Vector2(160, 48)
+	hud.add_child(timer_bg)
+
+	var timer_lbl := Label.new()
+	timer_lbl.name = "TimerHUD"
+	timer_lbl.text = GameState.get_tid_tekst()
+	timer_lbl.add_theme_font_size_override("font_size", 28)
+	timer_lbl.add_theme_color_override("font_color", Color.WHITE)
+	timer_lbl.position = Vector2(20, 18)
+	hud.add_child(timer_lbl)
+
+	# Handleliste panel (oeverst hoyre)
+	var liste_bg := ColorRect.new()
+	liste_bg.color = Color(0.1, 0.1, 0.15, 0.92)
+	liste_bg.position = Vector2(1070, 10)
+	liste_bg.size = Vector2(200, 260)
+	hud.add_child(liste_bg)
+
+	var liste_tittel := Label.new()
+	liste_tittel.text = "HANDLELISTE"
+	liste_tittel.add_theme_font_size_override("font_size", 14)
+	liste_tittel.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
+	liste_tittel.position = Vector2(1078, 16)
+	hud.add_child(liste_tittel)
+
+	_oppdater_handleliste_hud(hud)
+
+	# Interaksjonshint (midten bunn)
+	var hint := Label.new()
+	hint.name = "Hint"
+	hint.text = ""
+	hint.add_theme_font_size_override("font_size", 20)
+	hint.add_theme_color_override("font_color", Color(1.0, 0.9, 0.2))
+	hint.position = Vector2(400, 665)
+	hud.add_child(hint)
+
+	# Innkjop-feedback
+	var feedback := Label.new()
+	feedback.name = "Feedback"
+	feedback.text = ""
+	feedback.add_theme_font_size_override("font_size", 24)
+	feedback.add_theme_color_override("font_color", Color(0.2, 1.0, 0.3))
+	feedback.position = Vector2(400, 620)
+	hud.add_child(feedback)
+
+func _oppdater_handleliste_hud(hud: CanvasLayer) -> void:
+	# Slett gamle vare-labels
+	for child in hud.get_children():
+		if child.name.begins_with("Vare_"):
+			child.queue_free()
+
+	var y_start := 38
+	for i in range(GameState.handleliste.size()):
+		var vare = GameState.handleliste[i]
+		var lbl := Label.new()
+		lbl.name = "Vare_" + str(i)
+		var prefix := "[X] " if vare.hentet else "[ ] "
+		lbl.text = prefix + vare.navn
+		lbl.add_theme_font_size_override("font_size", 13)
+		var farge := Color(0.5, 0.9, 0.5) if vare.hentet else Color.WHITE
+		if vare.get("er_min", false):
+			farge = Color(1.0, 0.4, 0.4) if not vare.hentet else Color(0.5, 0.9, 0.5)
+		lbl.add_theme_color_override("font_color", farge)
+		lbl.position = Vector2(1078, y_start + i * 22)
+		lbl.size.x = 190.0
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		hud.add_child(lbl)
+
+func _process(delta: float) -> void:
+	_oppdater_timer()
+	_beveg_spiller(delta)
+	_oppdater_mathias()
+	_sjekk_sone()
+	_sjekk_powerups()
+
+	if Input.is_physical_key_just_pressed(KEY_E) or Input.is_action_just_pressed("ui_accept"):
+		if i_sone != "":
+			_hent_vare_fra_sone(i_sone)
+		elif _er_ved_kasse():
+			_gaa_til_kasse()
+
+func _oppdater_timer() -> void:
+	var hud := get_node_or_null("HUD")
+	if not hud: return
+	var lbl := hud.get_node_or_null("TimerHUD")
+	if lbl:
+		lbl.text = GameState.get_tid_tekst()
+		if GameState.tid_igjen < 120.0:
+			lbl.add_theme_color_override("font_color", Color.ORANGE)
+		if GameState.tid_igjen < 30.0:
+			lbl.add_theme_color_override("font_color", Color.RED)
+
+func _beveg_spiller(delta: float) -> void:
+	var fart := spiller_hastighet * GameState.get_hastighet_multiplikator()
+	var dir := Vector2.ZERO
+	if Input.is_physical_key_pressed(KEY_W) or Input.is_action_pressed("ui_up"):    dir.y -= 1
+	if Input.is_physical_key_pressed(KEY_S) or Input.is_action_pressed("ui_down"):  dir.y += 1
+	if Input.is_physical_key_pressed(KEY_A) or Input.is_action_pressed("ui_left"):  dir.x -= 1
+	if Input.is_physical_key_pressed(KEY_D) or Input.is_action_pressed("ui_right"): dir.x += 1
+	if dir.length() > 0:
+		dir = dir.normalized()
+	spiller.velocity = dir * fart
+	spiller.move_and_slide()
+	spiller.position.x = clamp(spiller.position.x, TILE, (KOLS - 1) * TILE)
+	spiller.position.y = clamp(spiller.position.y, TILE, (RADER - 1) * TILE)
+
+func _oppdater_mathias() -> void:
+	mathias_node.position.x += (spiller.position.x - 60 - mathias_node.position.x) * 0.08
+	mathias_node.position.y += (spiller.position.y + 8  - mathias_node.position.y) * 0.08
+
+func _sjekk_sone() -> void:
+	i_sone = ""
+	var spiller_rect := Rect2(spiller.position - Vector2(12, 12), Vector2(24, 24))
+	for kat in soner:
+		if soner[kat].intersects(spiller_rect):
+			i_sone = kat
+			break
+
+	var hud := get_node_or_null("HUD")
+	if hud:
+		var hint := hud.get_node_or_null("Hint")
+		if hint:
+			if i_sone != "" and _har_vare_fra_kategori(i_sone):
+				hint.text = "[E] Hent " + i_sone
+			elif _er_ved_kasse() and GameState.alle_varer_hentet():
+				hint.text = "[E] Ga til kassen"
+			else:
+				hint.text = ""
+
+func _har_vare_fra_kategori(kat: String) -> bool:
+	for vare in GameState.handleliste:
+		if vare.kategori == kat and not vare.hentet:
+			return true
+	return false
+
+func _hent_vare_fra_sone(kategori: String) -> void:
+	for vare in GameState.handleliste:
+		if vare.kategori == kategori and not vare.hentet:
+			vare.hentet = true
+			_vis_feedback(vare.navn + " hentet!")
+			_oppdater_handleliste_hud(get_node("HUD"))
+
+			# Egg og reke event
+			if vare.navn == "Egg og reke":
+				_spawn_meksikaner()
+			return
+
+func _vis_feedback(tekst: String) -> void:
+	var hud := get_node_or_null("HUD")
+	if not hud: return
+	var lbl := hud.get_node_or_null("Feedback")
+	if lbl:
+		lbl.text = tekst
+		lbl.modulate.a = 1.0
+		var tween := create_tween()
+		tween.tween_property(lbl, "modulate:a", 0.0, 2.0)
+
+func _spawn_meksikaner() -> void:
+	if meksikaner_node:
+		meksikaner_node.queue_free()
+	meksikaner_node = Node2D.new()
+	meksikaner_node.position = Vector2(26 * TILE, 7 * TILE)
+
+	var spr := Sprite2D.new()
+	spr.texture = load("res://assets/char_meksikaner.png")
+	spr.scale = Vector2(0.55, 0.55)
+	meksikaner_node.add_child(spr)
+
+	var ballong := Label.new()
+	ballong.text = "Ay caramba!"
+	ballong.add_theme_font_size_override("font_size", 18)
+	ballong.add_theme_color_override("font_color", Color(0.1, 0.1, 0.1))
+	ballong.position = Vector2(-30, -70)
+	meksikaner_node.add_child(ballong)
+
+	add_child(meksikaner_node)
+
+	# Spin-animasjon
+	var tween := create_tween()
+	tween.tween_property(meksikaner_node, "rotation", TAU, 3.0)
+	tween.tween_callback(meksikaner_node.queue_free)
+
+func _sjekk_powerups() -> void:
+	var spiller_rect := Rect2(spiller.position - Vector2(16, 16), Vector2(32, 32))
+	for pu in powerup_sprites:
+		if not pu.get_meta("aktiv"):
+			continue
+		var pu_rect := Rect2(pu.position - Vector2(16, 16), Vector2(32, 32))
+		if spiller_rect.intersects(pu_rect):
+			_plukk_opp_powerup(pu)
+
+func _plukk_opp_powerup(pu: Sprite2D) -> void:
+	var type: String = pu.get_meta("powerup_type")
+	pu.set_meta("aktiv", false)
+	pu.visible = false
+	var tid_na := Time.get_ticks_msec() / 1000.0
+	match type:
+		"speed":
+			GameState.speed_boost_slutt = tid_na + 18.0
+			GameState.legg_til_powerup("speed")
+			_vis_feedback("SPEED BOOST i 18 sek!")
+		"id":
+			GameState.har_id = true
+			GameState.legg_til_powerup("id")
+			_vis_feedback("Legitimasjon plukket opp!")
+		"baguette":
+			GameState.legg_til_powerup("baguette")
+			_vis_feedback("Bestevenn jubler! +10% fart")
+		"beast":
+			GameState.beast_slutt = tid_na + 12.0
+			GameState.legg_til_powerup("beast")
+			_vis_feedback("BEAST MODE i 12 sek! ID skippes!")
+
+func _er_ved_kasse() -> bool:
+	return spiller.position.x < 12 * TILE and spiller.position.y > 14 * TILE
+
+func _gaa_til_kasse() -> void:
+	if GameState.alle_varer_hentet():
+		get_tree().change_scene_to_file("res://scenes/Checkout.tscn")
+	else:
+		_vis_feedback("Du mangler " + str(GameState.handleliste.size() - GameState.antall_hentet()) + " vare(r) enda!")
+
+func _tid_ute() -> void:
+	GameState.fail_grunn = "Tiden er ute!"
+	get_tree().change_scene_to_file("res://scenes/LoseScreen.tscn")
