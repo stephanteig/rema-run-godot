@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   export-web:
     name: Web Export
@@ -20,10 +23,11 @@ jobs:
       - name: Sett opp eksportmapper
         run: mkdir -v -p builds/
 
+      - name: Importer prosjekt (bygg asset-cache)
+        run: godot --headless --import || true
+
       - name: Eksporter til Web (HTML5)
-        run: |
-          godot --headless --export-release "Web" ./builds/index.html
-        continue-on-error: false
+        run: godot --headless --export-release "Web" ./builds/index.html
 
       - name: Last opp build-artefakt
         uses: actions/upload-artifact@v4
