@@ -6,6 +6,7 @@ const RADER := 20
 
 var soner := {}
 var powerup_sprites := []
+var exclamation_sprites: Dictionary = {}
 
 var spiller: CharacterBody2D
 var mathias_node: Node2D
@@ -267,6 +268,7 @@ func _process(delta: float) -> void:
 	_oppdater_timer()
 	_beveg_spiller(delta)
 	_oppdater_mathias()
+	_oppdater_exclamation()
 	_sjekk_sone()
 	_sjekk_powerups()
 
@@ -335,10 +337,36 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _er_ved_kasse():
 		_gaa_til_kasse()
 
+func _oppdater_exclamation() -> void:
+	for kat in soner:
+		var har_vare := _har_vare_fra_kategori(kat)
+		var sone_rect: Rect2 = soner[kat]
+		var sone_senter := sone_rect.position + sone_rect.size / 2
+
+		if not exclamation_sprites.has(kat):
+			var spr := Sprite2D.new()
+			spr.texture = load("res://assets/ui_exclamation.png")
+			spr.scale = Vector2(1.2, 1.2)
+			spr.position = sone_senter + Vector2(0, -36)
+			add_child(spr)
+			exclamation_sprites[kat] = spr
+
+		var spr: Sprite2D = exclamation_sprites[kat]
+		var spiller_rect := Rect2(spiller.position - Vector2(60, 60), Vector2(120, 120))
+		var naer_nok := spiller_rect.intersects(sone_rect)
+
+		if har_vare and naer_nok:
+			spr.visible = true
+			spr.position.y = (sone_senter.y - 36) + sin(Time.get_ticks_msec() / 200.0) * 4.0
+		else:
+			spr.visible = false
+
 func _hent_vare_fra_sone(kategori: String) -> void:
 	for vare in GameState.handleliste:
 		if vare.kategori == kategori and not vare.hentet:
 			vare.hentet = true
+			if exclamation_sprites.has(kategori):
+				exclamation_sprites[kategori].visible = false
 			_vis_feedback(str(vare.navn) + " hentet!")
 			_oppdater_handleliste_hud(get_node("HUD"))
 			if vare.navn == "Egg og reke":

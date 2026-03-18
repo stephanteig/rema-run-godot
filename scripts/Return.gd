@@ -110,13 +110,37 @@ func _plasser_spiller() -> void:
 	col.shape = shape
 	spiller.add_child(col)
 
-	var spr := Sprite2D.new()
-	match GameState.karakter_id:
-		"kristine": spr.texture = load("res://assets/char_klasse_f.png")
-		"hemmelig":  spr.texture = load("res://assets/char_kassedame.png")
-		_:           spr.texture = load("res://assets/char_sondre.png")
-	spr.scale = Vector2(0.35, 0.35)
-	spiller.add_child(spr)
+	var anim_spr := AnimatedSprite2D.new()
+	anim_spr.name = "AnimatedSprite2D"
+	var frames := SpriteFrames.new()
+	frames.add_animation("walk")
+	frames.add_animation("idle")
+
+	if GameState.karakter_id == "sondre" or GameState.karakter_id == "":
+		var sheet := load("res://assets/char_sondre_walk_sheet.png")
+		for i in range(4):
+			var atlas := AtlasTexture.new()
+			atlas.atlas = sheet
+			atlas.region = Rect2(i * 64, 0, 64, 96)
+			frames.add_frame("walk", atlas)
+		var idle_atlas := AtlasTexture.new()
+		idle_atlas.atlas = sheet
+		idle_atlas.region = Rect2(0, 0, 64, 96)
+		frames.add_frame("idle", idle_atlas)
+	else:
+		var tex: Texture2D
+		match GameState.karakter_id:
+			"kristine": tex = load("res://assets/char_klasse_f.png")
+			"hemmelig":  tex = load("res://assets/char_kassedame.png")
+			_:           tex = load("res://assets/char_sondre.png")
+		frames.add_frame("walk", tex)
+		frames.add_frame("idle", tex)
+
+	frames.set_animation_speed("walk", 8)
+	frames.set_animation_speed("idle", 1)
+	anim_spr.sprite_frames = frames
+	anim_spr.scale = Vector2(0.35, 0.35)
+	spiller.add_child(anim_spr)
 	add_child(spiller)
 
 func _plasser_mathias() -> void:
@@ -214,6 +238,14 @@ func _beveg_spiller(delta: float) -> void:
 	spiller.move_and_slide()
 	spiller.position.x = clamp(spiller.position.x, 0.0, float(KART_PX))
 	spiller.position.y = clamp(spiller.position.y, 16.0, float((MAP_HOYDE - 1) * TILE))
+
+	var anim := spiller.get_node_or_null("AnimatedSprite2D")
+	if anim:
+		if spiller.velocity.length() > 0:
+			if not anim.is_playing() or anim.animation != "walk":
+				anim.play("walk")
+		else:
+			anim.play("idle")
 
 	if GameState.vanskelighet == "vanlig":
 		var tx := int(spiller.position.x / TILE)
