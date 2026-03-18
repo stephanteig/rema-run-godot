@@ -13,10 +13,10 @@ func _ready() -> void:
 	tittel.position = Vector2(640 - 350, 160)
 	add_child(tittel)
 
+	var min_tap := int(GameState.tid_igjen / 60)
+	var sek_tap := int(GameState.tid_igjen) % 60
 	var tid_igjen_lbl := Label.new()
-	var min := int(GameState.tid_igjen) / 60
-	var sek := int(GameState.tid_igjen) % 60
-	tid_igjen_lbl.text = "Tid igjen da du tapte: %02d:%02d" % [min, sek]
+	tid_igjen_lbl.text = "Tid igjen da du tapte: %02d:%02d" % [min_tap, sek_tap]
 	tid_igjen_lbl.add_theme_font_size_override("font_size", 28)
 	tid_igjen_lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
 	tid_igjen_lbl.position = Vector2(640 - 230, 300)
@@ -37,11 +37,15 @@ func _ready() -> void:
 
 func _lag_knapp(tekst: String, pos: Vector2) -> Button:
 	var btn := Button.new()
-	btn.text = tekst; btn.position = pos; btn.size = Vector2(240, 70)
+	btn.text = tekst
+	btn.position = pos
+	btn.size = Vector2(240, 70)
 	btn.add_theme_font_size_override("font_size", 26)
 	var s := StyleBoxFlat.new()
 	s.bg_color = Color(0.8, 0.0, 0.0)
-	s.corner_radius_top_left = 8; s.corner_radius_top_right = 8
-	s.corner_radius_bottom_left = 8; s.corner_radius_bottom_right = 8
+	s.corner_radius_top_left = 8
+	s.corner_radius_top_right = 8
+	s.corner_radius_bottom_left = 8
+	s.corner_radius_bottom_right = 8
 	btn.add_theme_stylebox_override("normal", s)
 	return btn

@@ -5,7 +5,7 @@ var vanskelighet: String = "vanlig"   # "vanlig" | "vanskelig"
 var karakter_id: String = "sondre"    # "sondre" | "kristine" | "hemmelig"
 
 # Handleliste
-var handleliste: Array = []           # [{navn, kategori, hentet: false}, ...]
+var handleliste: Array = []           # [{navn, kategori, hentet, er_min}, ...]
 var min_drikke: String = ""
 
 # Tilstand
@@ -15,7 +15,7 @@ var speed_boost_slutt: float = 0.0
 var beast_slutt: float = 0.0
 
 # Timer
-var timer_maks: float = 600.0         # 10 minutter i sekunder
+var timer_maks: float = 600.0
 var tid_igjen: float = 600.0
 var timer_aktiv: bool = false
 
@@ -23,13 +23,11 @@ var timer_aktiv: bool = false
 var fail_grunn: String = ""
 var personlig_rekord: float = 0.0
 
-# Signaler (brukes på tvers av scener)
 signal timer_ferdig
 signal powerup_hentet(type: String)
 
 func _ready() -> void:
-	# Last personlig rekord fra localStorage-ekvivalent
-	var cfg = ConfigFile.new()
+	var cfg := ConfigFile.new()
 	if cfg.load("user://saves.cfg") == OK:
 		personlig_rekord = cfg.get_value("rekord", "beste_tid", 0.0)
 
@@ -50,7 +48,7 @@ func stopp_timer() -> void:
 	timer_aktiv = false
 
 func get_tid_tekst() -> String:
-	var minutter := int(tid_igjen) / 60
+	var minutter := int(tid_igjen / 60)
 	var sekunder := int(tid_igjen) % 60
 	return "%02d:%02d" % [minutter, sekunder]
 
@@ -87,7 +85,7 @@ func get_hastighet_multiplikator() -> float:
 func lagre_rekord(tid_brukt: float) -> void:
 	if personlig_rekord == 0.0 or tid_brukt < personlig_rekord:
 		personlig_rekord = tid_brukt
-		var cfg = ConfigFile.new()
+		var cfg := ConfigFile.new()
 		cfg.set_value("rekord", "beste_tid", personlig_rekord)
 		cfg.save("user://saves.cfg")
 

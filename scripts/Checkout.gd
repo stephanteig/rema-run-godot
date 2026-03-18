@@ -1,7 +1,6 @@
 extends Node2D
 
 var pris: int = 0
-var id_sjekk_utfort: bool = false
 
 func _ready() -> void:
 	pris = randi_range(45, 189)
@@ -16,36 +15,33 @@ func _bygg_ui() -> void:
 	bg.size = Vector2(1280, 720)
 	add_child(bg)
 
-	# Kassedame sprite
 	var kassedame := Sprite2D.new()
 	kassedame.texture = load("res://assets/char_kassedame.png")
 	kassedame.scale = Vector2(1.2, 1.2)
 	kassedame.position = Vector2(640, 350)
 	add_child(kassedame)
 
-	# Mathias (stille ved siden av)
 	var mathias := Sprite2D.new()
 	mathias.texture = load("res://assets/char_mathias.png")
 	mathias.scale = Vector2(0.8, 0.8)
 	mathias.position = Vector2(800, 420)
 	add_child(mathias)
 
-	# Spiller-sprite
 	var spiller_spr := Sprite2D.new()
-	var tex_key := "char_sondre"
-	if GameState.karakter_id == "kristine": tex_key = "char_klasse_f"
-	elif GameState.karakter_id == "hemmelig": tex_key = "char_kassedame"
-	spiller_spr.texture = load("res://assets/" + tex_key + ".png")
+	match GameState.karakter_id:
+		"kristine": spiller_spr.texture = load("res://assets/char_klasse_f.png")
+		"hemmelig":  spiller_spr.texture = load("res://assets/char_kassedame.png")
+		_:           spiller_spr.texture = load("res://assets/char_sondre.png")
 	spiller_spr.scale = Vector2(0.9, 0.9)
 	spiller_spr.position = Vector2(480, 430)
 	add_child(spiller_spr)
 
-	# Timer HUD
 	var timer_bg := ColorRect.new()
 	timer_bg.color = Color(0.0, 0.0, 0.0, 0.7)
 	timer_bg.position = Vector2(10, 10)
 	timer_bg.size = Vector2(160, 48)
 	add_child(timer_bg)
+
 	var timer_lbl := Label.new()
 	timer_lbl.name = "TimerLabel"
 	timer_lbl.text = GameState.get_tid_tekst()
@@ -60,7 +56,6 @@ func _start_kassedialog() -> void:
 	_sjekk_id()
 
 func _vis_kassedame_tekst(tekst: String) -> void:
-	# Fjern gammel ballong
 	for child in get_children():
 		if child.name == "KasseBallong":
 			child.queue_free()
@@ -75,11 +70,15 @@ func _vis_kassedame_tekst(tekst: String) -> void:
 	style.corner_radius_top_right = 12
 	style.corner_radius_bottom_left = 12
 	style.corner_radius_bottom_right = 12
-	style.border_width_left = 2; style.border_width_right = 2
-	style.border_width_top = 2; style.border_width_bottom = 2
+	style.border_width_left = 2
+	style.border_width_right = 2
+	style.border_width_top = 2
+	style.border_width_bottom = 2
 	style.border_color = Color(0.3, 0.3, 0.3)
-	style.content_margin_left = 20; style.content_margin_right = 20
-	style.content_margin_top = 12; style.content_margin_bottom = 12
+	style.content_margin_left = 20
+	style.content_margin_right = 20
+	style.content_margin_top = 12
+	style.content_margin_bottom = 12
 	panel.add_theme_stylebox_override("panel", style)
 
 	var lbl := Label.new()
@@ -92,15 +91,13 @@ func _vis_kassedame_tekst(tekst: String) -> void:
 	add_child(panel)
 
 func _sjekk_id() -> void:
-	# Beast potion hopper over ID-sjekk helt
 	if GameState.har_powerup("beast"):
 		_vis_kassedame_tekst("Klart! Betaling godkjent!")
 		await get_tree().create_timer(1.5).timeout
 		_betal_ok()
 		return
 
-	# Sjansebassert ID-sjekk
-	var kar = load("res://scripts/data/Karakterer.gd").new().KARAKTERER.get(GameState.karakter_id, {})
+	var kar: Dictionary = load("res://scripts/data/Karakterer.gd").new().KARAKTERER.get(GameState.karakter_id, {})
 	var sjanse: float = kar.get("id_sjekk_sjanse", 0.33)
 	if randf() < sjanse:
 		_vis_kassedame_tekst("Har du legitimasjon?")
@@ -113,13 +110,11 @@ func _sjekk_id() -> void:
 
 func _handter_id_sjekk() -> void:
 	if GameState.har_id or GameState.har_powerup("id"):
-		# Vis godkjent
 		_vis_resultat_bilde("ui_godkjent")
 		_vis_kassedame_tekst("Alt i orden! Betaling godkjent")
 		await get_tree().create_timer(2.0).timeout
 		_betal_ok()
 	else:
-		# Vis avvist
 		_vis_resultat_bilde("ui_avvist")
 		_vis_kassedame_tekst("Avvist! Du hadde ikke legitimasjon")
 		await get_tree().create_timer(2.5).timeout

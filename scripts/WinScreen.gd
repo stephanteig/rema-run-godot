@@ -2,14 +2,13 @@ extends Node2D
 
 func _ready() -> void:
 	var tid_brukt := GameState.timer_maks - GameState.tid_igjen
-	var er_rekord := (GameState.personlig_rekord > 0 and tid_brukt <= GameState.personlig_rekord)
+	var er_rekord := GameState.personlig_rekord > 0.0 and tid_brukt <= GameState.personlig_rekord
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.08, 0.18, 0.1)
 	bg.size = Vector2(1280, 720)
 	add_child(bg)
 
-	# Tittel
 	var tittel := Label.new()
 	tittel.text = "Tilbake i tide!"
 	tittel.add_theme_font_size_override("font_size", 72)
@@ -17,7 +16,6 @@ func _ready() -> void:
 	tittel.position = Vector2(640 - 320, 80)
 	add_child(tittel)
 
-	# Ny rekord
 	if er_rekord:
 		var rekord_lbl := Label.new()
 		rekord_lbl.text = "NY REKORD!"
@@ -26,8 +24,7 @@ func _ready() -> void:
 		rekord_lbl.position = Vector2(640 - 180, 170)
 		add_child(rekord_lbl)
 
-	# Tid
-	var min_igjen := int(GameState.tid_igjen) / 60
+	var min_igjen := int(GameState.tid_igjen / 60)
 	var sek_igjen := int(GameState.tid_igjen) % 60
 	var tid_lbl := Label.new()
 	tid_lbl.text = "Tid igjen: %02d:%02d" % [min_igjen, sek_igjen]
@@ -36,8 +33,8 @@ func _ready() -> void:
 	tid_lbl.position = Vector2(640 - 150, 240)
 	add_child(tid_lbl)
 
-	if GameState.personlig_rekord > 0:
-		var pr_min := int(GameState.personlig_rekord) / 60
+	if GameState.personlig_rekord > 0.0:
+		var pr_min := int(GameState.personlig_rekord / 60)
 		var pr_sek := int(GameState.personlig_rekord) % 60
 		var pr_lbl := Label.new()
 		pr_lbl.text = "Personlig rekord: %02d:%02d" % [pr_min, pr_sek]
@@ -46,7 +43,6 @@ func _ready() -> void:
 		pr_lbl.position = Vector2(640 - 155, 295)
 		add_child(pr_lbl)
 
-	# Vareliste
 	var liste_tittel := Label.new()
 	liste_tittel.text = "Kjopte varer:"
 	liste_tittel.add_theme_font_size_override("font_size", 22)
@@ -57,13 +53,12 @@ func _ready() -> void:
 	for i in range(GameState.handleliste.size()):
 		var vare = GameState.handleliste[i]
 		var lbl := Label.new()
-		lbl.text = ("[OK] " if vare.hentet else "[--] ") + vare.navn
+		lbl.text = ("[OK] " if vare.hentet else "[--] ") + str(vare.navn)
 		lbl.add_theme_font_size_override("font_size", 18)
-		lbl.add_theme_color_override("font_color", Color(0.5,0.9,0.5) if vare.hentet else Color(0.9,0.4,0.4))
+		lbl.add_theme_color_override("font_color", Color(0.5, 0.9, 0.5) if vare.hentet else Color(0.9, 0.4, 0.4))
 		lbl.position = Vector2(400, 370 + i * 28)
 		add_child(lbl)
 
-	# Spill igjen-knapp
 	var btn := _lag_knapp("Spill igjen", Vector2(350, 600))
 	btn.pressed.connect(func():
 		GameState.reset()
@@ -72,12 +67,16 @@ func _ready() -> void:
 
 func _lag_knapp(tekst: String, pos: Vector2) -> Button:
 	var btn := Button.new()
-	btn.text = tekst; btn.position = pos; btn.size = Vector2(240, 70)
+	btn.text = tekst
+	btn.position = pos
+	btn.size = Vector2(240, 70)
 	btn.add_theme_font_size_override("font_size", 26)
 	var s := StyleBoxFlat.new()
 	s.bg_color = Color(0.8, 0.0, 0.0)
-	s.corner_radius_top_left = 8; s.corner_radius_top_right = 8
-	s.corner_radius_bottom_left = 8; s.corner_radius_bottom_right = 8
+	s.corner_radius_top_left = 8
+	s.corner_radius_top_right = 8
+	s.corner_radius_bottom_left = 8
+	s.corner_radius_bottom_right = 8
 	btn.add_theme_stylebox_override("normal", s)
 	var sh := s.duplicate() as StyleBoxFlat
 	sh.bg_color = Color(1.0, 0.2, 0.2)

@@ -44,7 +44,7 @@ static func generer_handleliste(min_drikke: String, antall_bestillinger: int) ->
 	var kategorier := ["Nøtter", "Baguetter", "Brus", "Tyggis", "Snacks"]
 	kategorier.shuffle()
 	for i in range(min(antall_bestillinger, kategorier.size())):
-		var kat := kategorier[i]
+		var kat: String = kategorier[i]
 		liste.append({
 			"navn": tilfeldig_vare(kat),
 			"kategori": kat,

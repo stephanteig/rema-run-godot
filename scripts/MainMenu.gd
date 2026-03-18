@@ -5,6 +5,9 @@ var valgt_karakter: String = "sondre"
 var karakter_ids := ["sondre", "kristine", "hemmelig"]
 var karakter_index := 0
 
+# Last karakterdata én gang
+var _alle_karakterer: Dictionary = load("res://scripts/data/Karakterer.gd").new().KARAKTERER
+
 # UI-noder
 var btn_vanlig: Button
 var btn_vanskelig: Button
@@ -19,19 +22,16 @@ func _ready() -> void:
 	_oppdater_karakter_visning()
 
 func _bygg_ui() -> void:
-	# Bakgrunn
 	var bg := ColorRect.new()
 	bg.color = Color(0.1, 0.1, 0.18)
 	bg.size = Vector2(1280, 720)
 	add_child(bg)
 
-	# Rød stripe øverst
 	var stripe := ColorRect.new()
 	stripe.color = Color(0.8, 0.0, 0.0)
 	stripe.size = Vector2(1280, 12)
 	add_child(stripe)
 
-	# Tittel
 	var tittel := Label.new()
 	tittel.text = "REMA RUN"
 	tittel.add_theme_font_size_override("font_size", 96)
@@ -39,7 +39,6 @@ func _bygg_ui() -> void:
 	tittel.position = Vector2(640 - 260, 50)
 	add_child(tittel)
 
-	# Undertittel
 	var sub := Label.new()
 	sub.text = "Energy Quest"
 	sub.add_theme_font_size_override("font_size", 32)
@@ -47,7 +46,7 @@ func _bygg_ui() -> void:
 	sub.position = Vector2(640 - 100, 155)
 	add_child(sub)
 
-	# Seksjon: Vanskelighetsgrad
+	# Vanskelighetsgrad
 	var vansk_tittel := Label.new()
 	vansk_tittel.text = "VANSKELIGHETSGRAD"
 	vansk_tittel.add_theme_font_size_override("font_size", 22)
@@ -65,7 +64,7 @@ func _bygg_ui() -> void:
 
 	_oppdater_vanskelighet_knapper()
 
-	# Seksjon: Karaktervalg
+	# Karaktervalg
 	var kar_tittel := Label.new()
 	kar_tittel.text = "VELG KARAKTER"
 	kar_tittel.add_theme_font_size_override("font_size", 22)
@@ -73,7 +72,6 @@ func _bygg_ui() -> void:
 	kar_tittel.position = Vector2(200, 390)
 	add_child(kar_tittel)
 
-	# Pil venstre
 	var pil_venstre := Button.new()
 	pil_venstre.text = "<"
 	pil_venstre.position = Vector2(200, 425)
@@ -81,7 +79,6 @@ func _bygg_ui() -> void:
 	pil_venstre.pressed.connect(_forrige_karakter)
 	add_child(pil_venstre)
 
-	# Pil høyre
 	var pil_hoyre := Button.new()
 	pil_hoyre.text = ">"
 	pil_hoyre.position = Vector2(530, 425)
@@ -89,21 +86,18 @@ func _bygg_ui() -> void:
 	pil_hoyre.pressed.connect(_neste_karakter)
 	add_child(pil_hoyre)
 
-	# Karakter-sprite (hvis tilgjengelig)
 	karakter_sprite = TextureRect.new()
 	karakter_sprite.position = Vector2(260, 415)
 	karakter_sprite.size = Vector2(64, 96)
 	karakter_sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	add_child(karakter_sprite)
 
-	# Navn
 	karakter_label = Label.new()
 	karakter_label.add_theme_font_size_override("font_size", 28)
 	karakter_label.add_theme_color_override("font_color", Color.WHITE)
 	karakter_label.position = Vector2(340, 420)
 	add_child(karakter_label)
 
-	# Beskrivelse
 	karakter_beskrivelse = Label.new()
 	karakter_beskrivelse.add_theme_font_size_override("font_size", 16)
 	karakter_beskrivelse.add_theme_color_override("font_color", Color(0.75, 0.75, 0.75))
@@ -112,7 +106,6 @@ func _bygg_ui() -> void:
 	karakter_beskrivelse.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(karakter_beskrivelse)
 
-	# Stats
 	stat_fart_label = Label.new()
 	stat_fart_label.add_theme_font_size_override("font_size", 16)
 	stat_fart_label.add_theme_color_override("font_color", Color(0.4, 0.9, 1.0))
@@ -125,14 +118,12 @@ func _bygg_ui() -> void:
 	stat_flaks_label.position = Vector2(340, 515)
 	add_child(stat_flaks_label)
 
-	# START-knapp
 	var start_btn := _lag_knapp("START ->", Vector2(490, 620), Color(0.8, 0.0, 0.0))
 	start_btn.size = Vector2(300, 70)
 	start_btn.add_theme_font_size_override("font_size", 32)
 	start_btn.pressed.connect(_start_spill)
 	add_child(start_btn)
 
-	# Bunntekst
 	var bunn := Label.new()
 	bunn.text = "Glemmen VGS - Medieproduksjon"
 	bunn.add_theme_font_size_override("font_size", 14)
@@ -169,10 +160,8 @@ func _velg_vanskelig() -> void:
 func _oppdater_vanskelighet_knapper() -> void:
 	if not btn_vanlig or not btn_vanskelig:
 		return
-	var alpha_valgt := 1.0
-	var alpha_ikke := 0.45
-	btn_vanlig.modulate.a = alpha_valgt if valgt_vanskelighet == "vanlig" else alpha_ikke
-	btn_vanskelig.modulate.a = alpha_valgt if valgt_vanskelighet == "vanskelig" else alpha_ikke
+	btn_vanlig.modulate.a = 1.0 if valgt_vanskelighet == "vanlig" else 0.45
+	btn_vanskelig.modulate.a = 1.0 if valgt_vanskelighet == "vanskelig" else 0.45
 
 func _forrige_karakter() -> void:
 	karakter_index = (karakter_index - 1 + karakter_ids.size()) % karakter_ids.size()
@@ -185,13 +174,12 @@ func _neste_karakter() -> void:
 	_oppdater_karakter_visning()
 
 func _oppdater_karakter_visning() -> void:
-	var kar = load("res://scripts/data/Karakterer.gd").new().KARAKTERER.get(valgt_karakter, load("res://scripts/data/Karakterer.gd").new().KARAKTERER["sondre"])
+	var kar: Dictionary = _alle_karakterer.get(valgt_karakter, _alle_karakterer["sondre"])
 	karakter_label.text = kar.navn
 	karakter_beskrivelse.text = kar.beskrivelse
-	stat_fart_label.text   = "Fart:  " + "*".repeat(kar.stat_fart)   + "-".repeat(5 - kar.stat_fart)
-	stat_flaks_label.text  = "Flaks: " + "*".repeat(kar.stat_flaks)  + "-".repeat(5 - kar.stat_flaks)
+	stat_fart_label.text  = "Fart:  " + "*".repeat(kar.stat_fart)  + "-".repeat(5 - kar.stat_fart)
+	stat_flaks_label.text = "Flaks: " + "*".repeat(kar.stat_flaks) + "-".repeat(5 - kar.stat_flaks)
 
-	# Last karakter-sprite
 	var tex_path := "res://assets/char_sondre.png"
 	if valgt_karakter == "kristine":
 		tex_path = "res://assets/char_klasse_f.png"
@@ -204,6 +192,5 @@ func _oppdater_karakter_visning() -> void:
 func _start_spill() -> void:
 	GameState.vanskelighet = valgt_vanskelighet
 	GameState.karakter_id = valgt_karakter
-	GameState.har_id = (valgt_vanskelighet == "vanlig")
 	GameState.reset()
 	get_tree().change_scene_to_file("res://scenes/Classroom.tscn")
