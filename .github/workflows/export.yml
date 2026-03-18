@@ -20,6 +20,12 @@ jobs:
         with:
           lfs: true
 
+      - name: Koble eksportmalar til riktig HOME-mappe
+        run: |
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          ln -sfn /root/.local/share/godot/export_templates/4.3.stable \
+            "$HOME/.local/share/godot/export_templates/4.3.stable"
+
       - name: Sett opp eksportmapper
         run: mkdir -v -p builds/
 
